@@ -1,3 +1,5 @@
+![ClaudeRPG cover](cover.png)
+
 # ClaudeRPG — A Self-Building Wiki as Game Memory
 
 A starter template for running a persistent, narrative roleplaying game with [Claude](https://claude.ai) (or any capable LLM) as the gamemaster, where the **wiki *is* the memory**. Every named NPC, location, item, faction, or rule that appears in play is written into a Markdown file the moment it shows up. Future sessions read those files lazily — only what is relevant to the current scene — and the world stays consistent without anyone keeping it all in their head.
