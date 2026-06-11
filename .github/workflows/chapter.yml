@@ -1,0 +1,45 @@
+name: chapter
+
+on:
+  milestone:
+    types: [closed]
+  workflow_dispatch:
+    inputs:
+      milestone_title:
+        description: "Milestone title, e.g. 'Chapter 1'"
+        required: true
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: read
+
+jobs:
+  recap:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GM_GITHUB_TOKEN || github.token }}
+
+      - name: Install dependencies
+        run: python3 -m pip install --quiet -r requirements.txt
+
+      - name: Close the chapter
+        env:
+          GH_TOKEN: ${{ secrets.GM_GITHUB_TOKEN || github.token }}
+          GM_API_KEY: ${{ secrets.GM_API_KEY }}
+          GM_PROVIDER: ${{ vars.GM_PROVIDER }}
+          GM_MODEL: ${{ vars.GM_MODEL }}
+          GM_BASE_URL: ${{ vars.GM_BASE_URL }}
+          TITLE: ${{ github.event.milestone.title || inputs.milestone_title }}
+        run: |
+          NUMBER=$(echo "$TITLE" | grep -oE '[0-9]+' | head -1)
+          if [ -z "$NUMBER" ]; then
+            echo "::error::cannot derive a chapter number from milestone title '$TITLE'"; exit 1
+          fi
+          git config user.name "The GM"
+          git config user.email "gm-bot@users.noreply.github.com"
+          python3 scripts/chapter_recap.py --milestone "$TITLE" --number "$NUMBER" --repo "$GITHUB_REPOSITORY"

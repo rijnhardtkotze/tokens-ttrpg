@@ -1,0 +1,85 @@
+name: setup
+
+on:
+  workflow_dispatch:
+    inputs:
+      seed_demo:
+        description: "Materialize the demo campaign (demo-campaign branch + starting quest issue)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+  issues: write
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GM_GITHUB_TOKEN || github.token }}
+
+      - name: Labels
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh label create player-action  --repo "$GITHUB_REPOSITORY" --force --color 1d76db --description "A player action PR"
+          gh label create gm-turn        --repo "$GITHUB_REPOSITORY" --force --color 6f42c1 --description "A GM world-state PR"
+          gh label create session-zero   --repo "$GITHUB_REPOSITORY" --force --color 0e8a16 --description "World creation — Weave cost waived"
+          gh label create timeline-merge --repo "$GITHUB_REPOSITORY" --force --color fbca04 --description "A timeline becoming real"
+          gh label create paradox        --repo "$GITHUB_REPOSITORY" --force --color b60205 --description "Conflicting realities need resolution"
+          gh label create "quest:active"   --repo "$GITHUB_REPOSITORY" --force --color c2e0c6 --description "Open quest"
+          gh label create "quest:resolved" --repo "$GITHUB_REPOSITORY" --force --color 0e8a16 --description "Quest completed"
+          gh label create "quest:failed"   --repo "$GITHUB_REPOSITORY" --force --color d93f0b --description "Quest failed"
+          gh label create seed           --repo "$GITHUB_REPOSITORY" --force --color f9d0c4 --description "Pre-planted plot thread"
+
+      - name: Chapter 1 milestone
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api "repos/$GITHUB_REPOSITORY/milestones" --jq '.[].title' | grep -qx "Chapter 1" || \
+            gh api -X POST "repos/$GITHUB_REPOSITORY/milestones" -f title="Chapter 1" \
+              -f description="The first arc of the campaign." > /dev/null
+
+      - name: Configuration report
+        env:
+          GM_API_KEY: ${{ secrets.GM_API_KEY }}
+          GM_PROVIDER: ${{ vars.GM_PROVIDER }}
+          GM_MODEL: ${{ vars.GM_MODEL }}
+          GM_BASE_URL: ${{ vars.GM_BASE_URL }}
+          HAS_PAT: ${{ secrets.GM_GITHUB_TOKEN != '' }}
+        run: |
+          {
+            echo "## Setup report"
+            echo "- PAT (GM_GITHUB_TOKEN): $([ "$HAS_PAT" = "true" ] && echo '✅ set' || echo '⚠️ missing — GM PRs will not get validation checks')"
+            if [ -n "$GM_API_KEY" ]; then
+              if python3 scripts/llm_client.py --ping; then
+                echo "- GM LLM: ✅ provider=$GM_PROVIDER model=$GM_MODEL"
+              else
+                echo "- GM LLM: ❌ configured but the ping FAILED — check GM_PROVIDER/GM_MODEL/GM_BASE_URL/GM_API_KEY"
+              fi
+            else
+              echo "- GM LLM: ❌ GM_API_KEY secret missing"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Seed the demo campaign
+        if: inputs.seed_demo
+        env:
+          GH_TOKEN: ${{ secrets.GM_GITHUB_TOKEN || github.token }}
+        run: |
+          git config user.name "The GM"
+          git config user.email "gm-bot@users.noreply.github.com"
+          git checkout -B demo-campaign origin/main
+          cp -R demo/. .
+          rm -rf demo
+          git add -A
+          git commit -m "Demo campaign: The Salt-Lantern Coast"
+          git push -u origin demo-campaign --force
+          gh issue create --repo "$GITHUB_REPOSITORY" \
+            --title "Quest: The lantern that went dark" \
+            --label "quest:active" --milestone "Chapter 1" \
+            --body-file .github/demo-quest.md
+          echo "Demo seeded. Open a PR demo-campaign → main, label it session-zero, and merge to begin." >> "$GITHUB_STEP_SUMMARY"

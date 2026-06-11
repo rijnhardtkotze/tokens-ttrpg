@@ -1,0 +1,103 @@
+# NOTE: issue_comment workflows always run the version of this file on the
+# default branch — changes to commands take effect only after merging to main.
+name: commands
+
+on:
+  issue_comment:
+    types: [created]
+  pull_request:
+    types: [labeled, opened, synchronize]
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+jobs:
+  router:
+    if: >-
+      github.event_name == 'issue_comment' &&
+      (startsWith(github.event.comment.body, '/gm') ||
+       startsWith(github.event.comment.body, '/lint') ||
+       startsWith(github.event.comment.body, '/resolve-paradox'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Acknowledge
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api -X POST "repos/$GITHUB_REPOSITORY/issues/comments/${{ github.event.comment.id }}/reactions" \
+            -f content=eyes > /dev/null || true
+
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GM_GITHUB_TOKEN || github.token }}
+
+      - name: Install dependencies
+        run: python3 -m pip install --quiet -r requirements.txt
+
+      - name: /lint
+        if: startsWith(github.event.comment.body, '/lint')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 scripts/check_style.py > report.txt || true
+          {
+            echo '### 🧹 Style audit'
+            echo '```'
+            cat report.txt
+            echo '```'
+          } > comment.md
+          gh issue comment "${{ github.event.issue.number }}" --repo "$GITHUB_REPOSITORY" --body-file comment.md
+
+      - name: /gm
+        if: startsWith(github.event.comment.body, '/gm')
+        env:
+          GH_TOKEN: ${{ secrets.GM_GITHUB_TOKEN || github.token }}
+          GM_API_KEY: ${{ secrets.GM_API_KEY }}
+          GM_PROVIDER: ${{ vars.GM_PROVIDER }}
+          GM_MODEL: ${{ vars.GM_MODEL }}
+          GM_BASE_URL: ${{ vars.GM_BASE_URL }}
+          BODY: ${{ github.event.comment.body }}
+        run: |
+          MESSAGE="${BODY#/gm}"
+          python3 scripts/gm_review.py --number "${{ github.event.issue.number }}" \
+            --repo "$GITHUB_REPOSITORY" --message "${MESSAGE:-The player summons you without a question.}"
+
+      - name: /resolve-paradox
+        if: startsWith(github.event.comment.body, '/resolve-paradox') && github.event.issue.pull_request
+        env:
+          GH_TOKEN: ${{ secrets.GM_GITHUB_TOKEN || github.token }}
+          GM_API_KEY: ${{ secrets.GM_API_KEY }}
+          GM_PROVIDER: ${{ vars.GM_PROVIDER }}
+          GM_MODEL: ${{ vars.GM_MODEL }}
+          GM_BASE_URL: ${{ vars.GM_BASE_URL }}
+        run: |
+          git config user.name "The GM"
+          git config user.email "gm-bot@users.noreply.github.com"
+          gh pr checkout "${{ github.event.issue.number }}" --repo "$GITHUB_REPOSITORY"
+          python3 scripts/gm_paradox.py --pr "${{ github.event.issue.number }}" --repo "$GITHUB_REPOSITORY"
+
+  paradox-detect:
+    if: >-
+      github.event_name == 'pull_request' &&
+      contains(github.event.pull_request.labels.*.name, 'timeline-merge')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Detect narrative paradoxes
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          for i in 1 2 3; do
+            STATE=$(gh pr view "$PR" --repo "$GITHUB_REPOSITORY" --json mergeable --jq '.mergeable')
+            [ "$STATE" != "UNKNOWN" ] && break
+            sleep 10
+          done
+          if [ "$STATE" = "CONFLICTING" ]; then
+            gh pr edit "$PR" --repo "$GITHUB_REPOSITORY" --add-label paradox || true
+            gh pr comment "$PR" --repo "$GITHUB_REPOSITORY" --body \
+              "🌀 **Narrative paradoxes detected.** This timeline contradicts what happened on \`main\` since the fork. Resolve the conflicts by hand, or comment \`/resolve-paradox\` to let the GM settle reality in fiction."
+          fi

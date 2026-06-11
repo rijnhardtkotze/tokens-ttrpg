@@ -1,0 +1,63 @@
+name: gm-turn
+
+on:
+  pull_request:
+    types: [closed]
+    branches: ["main", "timeline/**"]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: "Replay the GM turn for an already-merged PR"
+        required: true
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+concurrency:
+  group: gm-${{ github.event.pull_request.base.ref || 'replay' }}
+  cancel-in-progress: false
+
+jobs:
+  gm:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.pull_request.merged == true &&
+       !contains(github.event.pull_request.labels.*.name, 'gm-turn'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          # The PAT (when present) makes the GM's pushes trigger validation on its PRs.
+          token: ${{ secrets.GM_GITHUB_TOKEN || github.token }}
+
+      - name: Install dependencies
+        run: python3 -m pip install --quiet -r requirements.txt
+
+      - name: Checkout the merge commit
+        env:
+          GH_TOKEN: ${{ secrets.GM_GITHUB_TOKEN || github.token }}
+          PR: ${{ github.event.pull_request.number || inputs.pr_number }}
+        run: |
+          SHA=$(gh pr view "$PR" --repo "$GITHUB_REPOSITORY" --json mergeCommit --jq '.mergeCommit.oid')
+          if [ -z "$SHA" ] || [ "$SHA" = "null" ]; then
+            echo "::error::PR #$PR has no merge commit"; exit 1
+          fi
+          git checkout "$SHA"
+
+      - name: Run the GM
+        env:
+          GH_TOKEN: ${{ secrets.GM_GITHUB_TOKEN || github.token }}
+          GM_API_KEY: ${{ secrets.GM_API_KEY }}
+          GM_PROVIDER: ${{ vars.GM_PROVIDER }}
+          GM_MODEL: ${{ vars.GM_MODEL }}
+          GM_BASE_URL: ${{ vars.GM_BASE_URL }}
+          GM_AUTO_MERGE: ${{ vars.GM_AUTO_MERGE }}
+          PR: ${{ github.event.pull_request.number || inputs.pr_number }}
+        run: |
+          git config user.name "The GM"
+          git config user.email "gm-bot@users.noreply.github.com"
+          python3 scripts/gm_turn.py --pr "$PR" --repo "$GITHUB_REPOSITORY"
