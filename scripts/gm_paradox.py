@@ -29,6 +29,28 @@ def sh(*args: str, check: bool = True) -> subprocess.CompletedProcess:
     return subprocess.run(args, check=check, capture_output=True, text=True)
 
 
+def parse_paradox_envelope(raw: str) -> dict:
+    """Validate the /resolve-paradox contract (prompts/gm_paradox_system.md).
+
+    Required: a non-empty `resolutions` list of {path, content} string pairs.
+    Optional: `paradox_log` and `comment`, strings when present. This contract
+    is distinct from gm_turn's narration/pr_title envelope.
+    """
+    env = extract_json(raw)
+    resolutions = env.get("resolutions")
+    if not isinstance(resolutions, list) or not resolutions:
+        raise ValueError("envelope must contain a non-empty 'resolutions' list")
+    for r in resolutions:
+        if (not isinstance(r, dict) or not isinstance(r.get("path"), str)
+                or not r["path"] or not isinstance(r.get("content"), str)):
+            raise ValueError("every resolution must be an object with a non-empty "
+                             "string 'path' and a string 'content'")
+    for key in ("paradox_log", "comment"):
+        if key in env and not isinstance(env[key], str):
+            raise ValueError(f"'{key}' must be a string when present")
+    return env
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--pr", required=True, type=int)
@@ -57,13 +79,16 @@ def main() -> int:
         parts.append(f"\n===== CONFLICTED: {rel} =====\n{(root / rel).read_text(encoding='utf-8')}")
 
     system = (PROMPTS / "gm_paradox_system.md").read_text(encoding="utf-8")
-    env = extract_json(chat(system, [{"role": "user", "content": "".join(parts)}]))
-    if not isinstance(env.get("resolutions"), list):
-        print("::error::model returned no resolutions list")
+    raw = chat(system, [{"role": "user", "content": "".join(parts)}])
+    try:
+        env = parse_paradox_envelope(raw)
+    except (ValueError, json.JSONDecodeError) as exc:
+        print(f"::error::paradox envelope rejected: {exc}")
+        print(f"Raw model output:\n{raw}")
         sh("git", "merge", "--abort", check=False)
         return 1
 
-    resolved = {r["path"]: r["content"] for r in env.get("resolutions", [])}
+    resolved = {r["path"]: r["content"] for r in env["resolutions"]}
     missing = [rel for rel in conflicted if rel not in resolved]
     if missing:
         print(f"::error::model left conflicts unresolved: {missing}")

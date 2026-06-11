@@ -20,6 +20,21 @@ def sh(*args: str) -> str:
     return subprocess.run(args, check=True, capture_output=True, text=True).stdout
 
 
+def parse_recap_envelope(raw: str) -> dict:
+    """Validate the chapter-close contract (prompts/chapter_recap_system.md).
+
+    Required: a non-blank string `recap`. Optional: `title`, a string when
+    present (the driver falls back to the milestone title). This contract is
+    distinct from gm_turn's narration/pr_title envelope.
+    """
+    env = extract_json(raw)
+    if not isinstance(env.get("recap"), str) or not env["recap"].strip():
+        raise ValueError("envelope must contain a non-blank string 'recap'")
+    if "title" in env and not isinstance(env["title"], str):
+        raise ValueError("'title' must be a string when present")
+    return env
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--milestone", required=True, help="milestone title, e.g. 'Chapter 1'")
@@ -40,11 +55,15 @@ def main() -> int:
         parts.append(f"===== {p.name} =====\n{p.read_text(encoding='utf-8')}")
 
     system = (PROMPTS / "chapter_recap_system.md").read_text(encoding="utf-8")
-    env = extract_json(chat(system, [{"role": "user", "content": "\n\n".join(parts)}]))
-    title, recap = env.get("title", args.milestone), env.get("recap", "")
-    if not recap:
-        print("::error::model returned no recap")
+    raw = chat(system, [{"role": "user", "content": "\n\n".join(parts)}])
+    try:
+        env = parse_recap_envelope(raw)
+    except (ValueError, json.JSONDecodeError) as exc:
+        print(f"::error::recap envelope rejected: {exc}")
+        print(f"Raw model output:\n{raw}")
         return 1
+    title = (env.get("title") or "").strip() or args.milestone
+    recap = env["recap"]
 
     recap_path = root / "sessions" / f"chapter-{args.number}-recap.md"
     recap_path.write_text(f"# Chapter {args.number}: {title}\n\n{recap.strip()}\n", encoding="utf-8")
