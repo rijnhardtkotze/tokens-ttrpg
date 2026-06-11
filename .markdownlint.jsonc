@@ -1,0 +1,9 @@
+{
+  // Relaxed config for a prose wiki: structure checks live in scripts/, not here.
+  "default": true,
+  "MD013": false, // line length — prose
+  "MD033": false, // inline HTML — sticky-comment markers, details blocks
+  "MD041": false, // first line heading — frontmatter comes first
+  "MD025": false, // multiple H1 — session logs append scenes
+  "MD024": { "siblings_only": true } // repeated headings across scenes are fine
+}

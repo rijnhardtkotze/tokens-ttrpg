@@ -26,6 +26,8 @@ Central navigation. For details, follow the category indexes.
 - [[meta/contradictions]] — flagged contradictions
 - [[meta/seeds]] — pre-planted plot threads
 - [[meta/lint-protocol]] — self-improvement routine
+- [[meta/git-protocol]] — how the game is played through Git (actions, dice, Weave, timelines)
+- [[meta/rolls]] — append-only ledger of every die ever cast
 
 ## Character & Plot
 

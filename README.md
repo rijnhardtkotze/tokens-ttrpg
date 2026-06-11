@@ -8,6 +8,50 @@ This repository contains the empty scaffold: protocol, conventions, frontmatter 
 
 ---
 
+## Git mode — the repository is the world
+
+Beyond the wiki, this repo can play itself **through Git**. Git primitives are not
+storage here; they are the game mechanics:
+
+- **`main` is the canonical timeline.** History is the immutable past of the world.
+- **Every player action is a Pull Request.** Opening it declares intent, CI checks are
+  the laws of physics, and **merging makes it real**.
+- **The GM is a CI job.** After every merge, a provider-agnostic LLM gamemaster wakes
+  up in GitHub Actions, narrates the consequences, canonizes new entities, and opens
+  its own world-state PR back at you. Merging the GM's PR is turning the page — and
+  your review is the firewall against hallucinated canon.
+- **Fate is a hash.** Dice rolls are derived deterministically from the merge commit
+  SHA — provably fair, unfudgeable by player *or* GM, verifiable forever
+  (`scripts/dice.py`, ledger in `meta/rolls.md`).
+- **Branches are alternate timelines.** Fork reality to explore a what-if, merge it to
+  make it real, or archive it and `cherry-pick` a memory out of a dead timeline. Merge
+  conflicts are narrative **paradoxes** the GM resolves in fiction.
+- **Issues are quests, milestones are chapters, releases are chapter recaps.**
+- **Changing the world costs Weave.** A diff-cost economy meters how much reality one
+  action may rewrite, enforced by CI against your character sheet.
+
+The full rulebook is [`meta/git-protocol.md`](./meta/git-protocol.md).
+
+### Git mode setup
+
+1. Fork this repo.
+2. Add the secret `GM_API_KEY` and repo variables `GM_PROVIDER` (`anthropic` or
+   `openai`), `GM_MODEL`, and optionally `GM_BASE_URL` — the `openai` provider with a
+   custom base URL covers OpenRouter, vLLM, Ollama, and any OpenAI-compatible endpoint.
+3. Add a fine-grained PAT (this repo only: Contents RW, Pull requests RW, Issues RW)
+   as the secret `GM_GITHUB_TOKEN`, so the GM's own PRs get validation checks.
+4. Run the **setup** workflow (Actions → setup). It creates labels and the Chapter 1
+   milestone, sanity-checks your configuration, and can seed a ready-to-play demo
+   campaign as a `demo-campaign` branch.
+5. Open a **session-zero** PR to co-author your world with the GM — or open the PR
+   `demo-campaign → main`, label it `session-zero`, and merge. The GM's first turn is
+   the opening scene.
+
+Git mode is optional. Everything below — local play in Claude Code or any editor —
+still works unchanged.
+
+---
+
 ## The idea in one paragraph
 
 LLMs forget. They have a context window, not a memory. So instead of trying to keep a campaign in the chat, **externalize the world to files**. The GM's job, alongside narrating, is to write down anything new the moment it is established — and then, before the next turn, read only the files relevant to where the player actually is. The wiki grows session by session. Old sessions don't have to be re-read; their consequences live in the canon files. The GM gets a coherent world without burning context, and the player gets a campaign that actually remembers itself.

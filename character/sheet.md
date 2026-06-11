@@ -3,9 +3,15 @@ id: character-sheet
 title: <Character Name or Role>
 type: character
 status: alive
+weave: 10
+weave_max: 10
 ---
 
 # Character Sheet
+
+_`weave` / `weave_max` in the frontmatter are the cost-of-changing-reality resource
+used in Git mode (see `meta/git-protocol.md`). They are maintained by the GM driver —
+do not edit them by hand._
 
 ## Identity
 
