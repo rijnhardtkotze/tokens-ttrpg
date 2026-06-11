@@ -1,0 +1,94 @@
+name: validate
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+    branches: ["main", "timeline/**"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  label:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Auto-label by branch prefix
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_REF: ${{ github.head_ref }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          case "$HEAD_REF" in
+            gm/*)      gh pr edit "$PR" --repo "$GITHUB_REPOSITORY" --add-label gm-turn || true ;;
+            action/*)  gh pr edit "$PR" --repo "$GITHUB_REPOSITORY" --add-label player-action || true ;;
+          esac
+
+  structure:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Wiki validators
+        run: |
+          python3 scripts/validate_frontmatter.py
+          python3 scripts/check_links.py
+          python3 scripts/check_indexes.py
+      - name: Unit tests
+        run: python3 -m unittest discover -s tests
+
+  mdlint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: DavidAnson/markdownlint-cli2-action@v16
+        with:
+          globs: |
+            **/*.md
+            !tests/**
+            !demo/**
+
+  weave-cost:
+    if: >-
+      github.event_name == 'pull_request' &&
+      !contains(github.event.pull_request.labels.*.name, 'gm-turn') &&
+      !contains(github.event.pull_request.labels.*.name, 'session-zero')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Compute cost vs current Weave
+        id: cost
+        env:
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+        run: |
+          BUDGET=$(git show "origin/$BASE_REF:character/sheet.md" \
+            | python3 -c "import sys; sys.path.insert(0,'scripts'); from weave_cost import read_weave; w,_=read_weave(sys.stdin.read()); print(w if w is not None else '')")
+          ARGS=(--base "origin/$BASE_REF" --head HEAD --format markdown)
+          if [ -n "$BUDGET" ]; then ARGS+=(--budget "$BUDGET"); fi
+          set +e
+          python3 scripts/weave_cost.py "${ARGS[@]}" > cost.md
+          echo "exceeded=$([ $? -eq 3 ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+          set -e
+          [ -n "$BUDGET" ] || echo $'\n_No `weave:` on the sheet yet — the game has not started, cost is informational._' >> cost.md
+          cat cost.md
+      - name: Sticky cost comment
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          printf '<!-- weave-cost -->\n' | cat - cost.md > comment.md
+          CID=$(gh api "repos/$GITHUB_REPOSITORY/issues/$PR/comments" \
+            --jq '.[] | select(.body | startswith("<!-- weave-cost -->")) | .id' | head -1)
+          if [ -n "$CID" ]; then
+            gh api -X PATCH "repos/$GITHUB_REPOSITORY/issues/comments/$CID" -F body=@comment.md > /dev/null
+          else
+            gh pr comment "$PR" --repo "$GITHUB_REPOSITORY" --body-file comment.md > /dev/null
+          fi
+      - name: Reality resists
+        if: steps.cost.outputs.exceeded == 'true'
+        run: |
+          echo "::error::This action costs more Weave than you have. Trim the diff or rest (merge a GM turn) first."
+          exit 1

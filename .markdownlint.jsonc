@@ -1,9 +1,20 @@
 {
-  // Relaxed config for a prose wiki: structure checks live in scripts/, not here.
+  // Relaxed config for a prose wiki the GM also writes into: the structural
+  // integrity checks live in scripts/, markdownlint only catches egregious
+  // breakage. Style rules that fight narrative prose are off.
   "default": true,
-  "MD013": false, // line length — prose
-  "MD033": false, // inline HTML — sticky-comment markers, details blocks
-  "MD041": false, // first line heading — frontmatter comes first
-  "MD025": false, // multiple H1 — session logs append scenes
-  "MD024": { "siblings_only": true } // repeated headings across scenes are fine
+  "MD013": false, // line length
+  "MD033": false, // inline HTML (sticky-comment markers)
+  "MD041": false, // first line heading (frontmatter comes first)
+  "MD025": false, // multiple H1 (session logs append scenes)
+  "MD024": false, // duplicate headings (Quick Reference in every article)
+  "MD040": false, // fenced code language (rolls blocks, format examples)
+  "MD060": false, // table column style (ledger rows are appended mechanically)
+  "MD032": false, // blanks around lists (prompt files, appended logs)
+  "MD031": false, // blanks around fences
+  "MD012": false, // multiple blank lines (append operations)
+  "MD026": false, // trailing punctuation in headings (scene titles)
+  "MD036": false, // emphasis as heading (in-fiction asides)
+  "MD049": false, // emphasis style (scaffold uses _x_, prose uses *x*)
+  "MD050": false  // strong style
 }

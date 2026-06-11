@@ -13,25 +13,6 @@ import yaml
 
 LINK_RE = re.compile(r"\[\[([^\]|]+)(?:\|[^\]]*)?\]\]")
 
-# Files that look like articles but follow their own (or no) schema.
-SKIP_FRONTMATTER = {
-    "README.md",
-    "CLAUDE.md",
-    "LICENSE",
-    "index.md",
-    "meta/canon.md",
-    "meta/conventions.md",
-    "meta/lint-protocol.md",
-    "meta/git-protocol.md",
-    "meta/contradictions.md",
-    "meta/seeds.md",
-    "meta/rolls.md",
-    "character/journal.md",
-    "plot/state.md",
-    "plot/active-quests.md",
-    "plot/completed-quests.md",
-}
-
 WORLD_DIR_FOR_TYPE = {
     "npc": "npcs",
     "location": "regions",
@@ -100,7 +81,8 @@ def build_id_map(root: Path) -> dict[str, list[str]]:
     ids: dict[str, list[str]] = {}
     for path in sorted(root.rglob("*.md")):
         rel = path.relative_to(root).as_posix()
-        if rel.startswith((".github/", "scripts/", "tests/")):
+        # demo/ is staging material for the demo-campaign branch, not live wiki
+        if rel.startswith((".github/", "scripts/", "tests/", "demo/")):
             continue
         try:
             fm, _ = parse_frontmatter(path.read_text(encoding="utf-8"))

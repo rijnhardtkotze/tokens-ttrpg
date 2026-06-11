@@ -28,7 +28,7 @@ def main() -> int:
     paths = {
         p.relative_to(root).as_posix().removesuffix(".md")
         for p in root.rglob("*.md")
-        if not p.relative_to(root).as_posix().startswith((".github/", "scripts/", "tests/"))
+        if not p.relative_to(root).as_posix().startswith((".github/", "scripts/", "tests/", "demo/"))
     }
     session_ids = {p.stem for p in (root / "sessions").glob("*.md")} if (root / "sessions").is_dir() else set()
 
