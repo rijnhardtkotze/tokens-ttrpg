@@ -90,8 +90,12 @@ def main() -> int:
 
     resolved = {r["path"]: r["content"] for r in env["resolutions"]}
     missing = [rel for rel in conflicted if rel not in resolved]
-    if missing:
-        print(f"::error::model left conflicts unresolved: {missing}")
+    extra = sorted(set(resolved) - set(conflicted))
+    if missing or extra:
+        if missing:
+            print(f"::error::model left conflicts unresolved: {missing}")
+        if extra:
+            print(f"::error::model returned resolutions for non-conflicted paths: {extra}")
         sh("git", "merge", "--abort", check=False)
         return 1
     for rel, content in resolved.items():
