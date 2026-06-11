@@ -24,6 +24,9 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.GM_GITHUB_TOKEN || github.token }}
 
+      - name: Install dependencies
+        run: python3 -m pip install --quiet -r requirements.txt
+
       - name: Close the chapter
         env:
           GH_TOKEN: ${{ secrets.GM_GITHUB_TOKEN || github.token }}

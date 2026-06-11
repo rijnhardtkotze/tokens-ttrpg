@@ -16,7 +16,6 @@ import datetime
 import json
 import math
 import os
-import re
 import subprocess
 import sys
 from pathlib import Path
@@ -28,7 +27,7 @@ import dice as dice_mod  # noqa: E402
 import weave_cost  # noqa: E402
 from gm_context import assemble  # noqa: E402
 from lib.wiki import parse_frontmatter, serialize_frontmatter  # noqa: E402
-from llm_client import chat  # noqa: E402
+from llm_client import chat, extract_json  # noqa: E402
 
 PROMPTS = Path(__file__).resolve().parent / "prompts"
 ALLOWED_PREFIXES = ("world/", "plot/", "sessions/")
@@ -52,15 +51,8 @@ def gh(*args: str, check: bool = True) -> str:
 # ---------- envelope validation & application ----------
 
 def parse_envelope(raw: str) -> dict:
-    text = raw.strip()
-    fence = re.search(r"```(?:json)?\s*\n(.*?)```", text, re.DOTALL)
-    if fence:
-        text = fence.group(1)
-    start, end = text.find("{"), text.rfind("}")
-    if start == -1 or end == -1:
-        raise ValueError("no JSON object found in model output")
-    env = json.loads(text[start : end + 1])
-    if not isinstance(env, dict) or not env.get("narration") or not env.get("pr_title"):
+    env = extract_json(raw)
+    if not env.get("narration") or not env.get("pr_title"):
         raise ValueError("envelope must be an object with at least narration and pr_title")
     return env
 

@@ -14,6 +14,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import sys
 import time
 import urllib.error
@@ -28,6 +29,24 @@ RETRIABLE = {429, 500, 502, 503, 504, 529}
 
 class LLMError(RuntimeError):
     pass
+
+
+def extract_json(raw: str) -> dict:
+    """Pull the single JSON object out of a model reply (tolerates one fenced block).
+
+    Schema validation is the caller's job — each driver has its own contract.
+    """
+    text = raw.strip()
+    fence = re.search(r"```(?:json)?\s*\n(.*?)```", text, re.DOTALL)
+    if fence:
+        text = fence.group(1)
+    start, end = text.find("{"), text.rfind("}")
+    if start == -1 or end == -1:
+        raise ValueError("no JSON object found in model output")
+    data = json.loads(text[start : end + 1])
+    if not isinstance(data, dict):
+        raise ValueError("model output is not a JSON object")
+    return data
 
 
 def _config() -> tuple[str, str, str, str]:

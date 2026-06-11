@@ -11,8 +11,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from gm_turn import parse_envelope  # noqa: E402
-from llm_client import chat  # noqa: E402
+from llm_client import chat, extract_json  # noqa: E402
 
 PROMPTS = Path(__file__).resolve().parent / "prompts"
 
@@ -41,7 +40,7 @@ def main() -> int:
         parts.append(f"===== {p.name} =====\n{p.read_text(encoding='utf-8')}")
 
     system = (PROMPTS / "chapter_recap_system.md").read_text(encoding="utf-8")
-    env = parse_envelope(chat(system, [{"role": "user", "content": "\n\n".join(parts)}]))
+    env = extract_json(chat(system, [{"role": "user", "content": "\n\n".join(parts)}]))
     title, recap = env.get("title", args.milestone), env.get("recap", "")
     if not recap:
         print("::error::model returned no recap")

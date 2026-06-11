@@ -34,6 +34,9 @@ jobs:
           # The PAT (when present) makes the GM's pushes trigger validation on its PRs.
           token: ${{ secrets.GM_GITHUB_TOKEN || github.token }}
 
+      - name: Install dependencies
+        run: python3 -m pip install --quiet -r requirements.txt
+
       - name: Checkout the merge commit
         env:
           GH_TOKEN: ${{ secrets.GM_GITHUB_TOKEN || github.token }}

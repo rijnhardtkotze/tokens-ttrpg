@@ -35,6 +35,9 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.GM_GITHUB_TOKEN || github.token }}
 
+      - name: Install dependencies
+        run: python3 -m pip install --quiet -r requirements.txt
+
       - name: /lint
         if: startsWith(github.event.comment.body, '/lint')
         env:

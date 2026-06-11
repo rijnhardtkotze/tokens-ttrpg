@@ -19,8 +19,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from gm_context import BOOT_FILES  # noqa: E402
-from gm_turn import parse_envelope  # noqa: E402  (same JSON tolerance)
-from llm_client import chat  # noqa: E402
+from llm_client import chat, extract_json  # noqa: E402
 
 PROMPTS = Path(__file__).resolve().parent / "prompts"
 MARKER_RE = re.compile(r"^(<{7}|={7}|>{7})", re.MULTILINE)
@@ -58,7 +57,11 @@ def main() -> int:
         parts.append(f"\n===== CONFLICTED: {rel} =====\n{(root / rel).read_text(encoding='utf-8')}")
 
     system = (PROMPTS / "gm_paradox_system.md").read_text(encoding="utf-8")
-    env = parse_envelope(chat(system, [{"role": "user", "content": "".join(parts)}]))
+    env = extract_json(chat(system, [{"role": "user", "content": "".join(parts)}]))
+    if not isinstance(env.get("resolutions"), list):
+        print("::error::model returned no resolutions list")
+        sh("git", "merge", "--abort", check=False)
+        return 1
 
     resolved = {r["path"]: r["content"] for r in env.get("resolutions", [])}
     missing = [rel for rel in conflicted if rel not in resolved]
