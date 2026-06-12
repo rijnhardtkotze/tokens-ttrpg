@@ -89,6 +89,13 @@ def main() -> int:
         return 1
 
     resolved = {r["path"]: r["content"] for r in env["resolutions"]}
+    if len(resolved) != len(env["resolutions"]):
+        paths = [r["path"] for r in env["resolutions"]]
+        duplicates = [p for p in set(paths) if paths.count(p) > 1]
+        print(f"::error::duplicate paths in resolutions: {duplicates}")
+        sh("git", "merge", "--abort", check=False)
+        return 1
+    missing = [rel for rel in conflicted if rel not in resolved]
     missing = [rel for rel in conflicted if rel not in resolved]
     extra = sorted(set(resolved) - set(conflicted))
     if missing or extra:
