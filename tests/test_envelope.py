@@ -87,6 +87,13 @@ class TestParadoxEnvelope(unittest.TestCase):
             with self.assertRaises(ValueError, msg=repr(payload)):
                 parse_paradox_envelope(json.dumps(payload))
 
+    def test_rejects_duplicate_resolution_paths(self):
+        # Fail fast instead of letting last-one-wins hide an ambiguous set.
+        payload = {"resolutions": [{"path": "world/npcs/x.md", "content": "a"},
+                                   {"path": "world/npcs/x.md", "content": "b"}]}
+        with self.assertRaisesRegex(ValueError, "duplicate"):
+            parse_paradox_envelope(json.dumps(payload))
+
     def test_rejects_non_string_log_and_comment(self):
         for key in ("paradox_log", "comment"):
             payload = self._valid()

@@ -32,9 +32,10 @@ def sh(*args: str, check: bool = True) -> subprocess.CompletedProcess:
 def parse_paradox_envelope(raw: str) -> dict:
     """Validate the /resolve-paradox contract (prompts/gm_paradox_system.md).
 
-    Required: a non-empty `resolutions` list of {path, content} string pairs.
-    Optional: `paradox_log` and `comment`, strings when present. This contract
-    is distinct from gm_turn's narration/pr_title envelope.
+    Required: a non-empty `resolutions` list of {path, content} string pairs
+    with no duplicate paths. Optional: `paradox_log` and `comment`, strings
+    when present. This contract is distinct from gm_turn's narration/pr_title
+    envelope.
     """
     env = extract_json(raw)
     resolutions = env.get("resolutions")
@@ -45,6 +46,10 @@ def parse_paradox_envelope(raw: str) -> dict:
                 or not r["path"] or not isinstance(r.get("content"), str)):
             raise ValueError("every resolution must be an object with a non-empty "
                              "string 'path' and a string 'content'")
+    paths = [r["path"] for r in resolutions]
+    duplicates = sorted({p for p in paths if paths.count(p) > 1})
+    if duplicates:
+        raise ValueError(f"duplicate paths in resolutions: {duplicates}")
     for key in ("paradox_log", "comment"):
         if key in env and not isinstance(env[key], str):
             raise ValueError(f"'{key}' must be a string when present")
@@ -90,12 +95,6 @@ def main() -> int:
         return 1
 
     resolved = {r["path"]: r["content"] for r in env["resolutions"]}
-    if len(resolved) != len(env["resolutions"]):
-        paths = [r["path"] for r in env["resolutions"]]
-        duplicates = [p for p in set(paths) if paths.count(p) > 1]
-        print(f"::error::duplicate paths in resolutions: {duplicates}")
-        sh("git", "merge", "--abort", check=False)
-        return 1
     missing = [rel for rel in conflicted if rel not in resolved]
     extra = sorted(set(resolved) - set(conflicted))
     if missing or extra:
