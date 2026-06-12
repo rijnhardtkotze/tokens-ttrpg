@@ -27,7 +27,7 @@ import dice as dice_mod  # noqa: E402
 import weave_cost  # noqa: E402
 from gm_context import assemble  # noqa: E402
 from lib.wiki import parse_frontmatter, serialize_frontmatter  # noqa: E402
-from llm_client import chat, extract_json  # noqa: E402
+from llm_client import chat, extract_json, log_raw  # noqa: E402
 
 PROMPTS = Path(__file__).resolve().parent / "prompts"
 ALLOWED_PREFIXES = ("world/", "plot/", "sessions/")
@@ -256,7 +256,7 @@ def main() -> int:
             sh("git", "checkout", "--", ".")
             if attempt == 1:
                 print(f"::error::GM turn failed after repair attempt: {exc}")
-                print(f"Raw model output:\n{raw}")
+                log_raw("Raw model output:", raw)
                 return 1
             print(f"Envelope rejected ({exc}); asking the model to repair.")
             messages += [{"role": "assistant", "content": raw},

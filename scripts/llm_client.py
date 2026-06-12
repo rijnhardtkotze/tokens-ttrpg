@@ -19,6 +19,7 @@ import sys
 import time
 import urllib.error
 import urllib.request
+import uuid
 
 DEFAULT_BASE = {
     "anthropic": "https://api.anthropic.com",
@@ -47,6 +48,19 @@ def extract_json(raw: str) -> dict:
     if not isinstance(data, dict):
         raise ValueError("model output is not a JSON object")
     return data
+
+
+def log_raw(label: str, text: str) -> None:
+    """Print untrusted model output to a CI log without letting it issue
+    workflow commands (::error::, ::add-mask::, ...)."""
+    # Pick a token that does not appear in the text, otherwise the model could
+    # emit our own ::{token}:: end-marker and re-enable workflow commands early.
+    token = uuid.uuid4().hex
+    while token in text:
+        token = uuid.uuid4().hex
+    print(f"::stop-commands::{token}")
+    print(f"{label}\n{text}")
+    print(f"::{token}::")
 
 
 def _config() -> tuple[str, str, str, str]:
