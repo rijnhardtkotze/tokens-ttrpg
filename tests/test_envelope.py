@@ -7,7 +7,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
 from chapter_recap import parse_recap_envelope  # noqa: E402
 from gm_paradox import parse_paradox_envelope  # noqa: E402
 from gm_turn import check_paths, parse_envelope  # noqa: E402
-from llm_client import extract_json  # noqa: E402
+from llm_client import extract_json, sanitize_annotation  # noqa: E402
 
 
 class TestExtractJson(unittest.TestCase):
@@ -30,6 +30,29 @@ class TestExtractJson(unittest.TestCase):
         for bad in ("no json here", "[1, 2]", '"just a string"'):
             with self.assertRaises(ValueError, msg=bad):
                 extract_json(bad)
+
+
+class TestSanitizeAnnotation(unittest.TestCase):
+    """sanitize_annotation prevents LLM output from issuing workflow commands."""
+
+    def test_passthrough_clean(self):
+        self.assertEqual(sanitize_annotation("no special chars"), "no special chars")
+
+    def test_encodes_percent_first(self):
+        self.assertEqual(sanitize_annotation("%0A"), "%250A")
+
+    def test_encodes_crlf(self):
+        self.assertEqual(sanitize_annotation("a\rb\nc"), "a%0Db%0Ac")
+
+    def test_newlines_removed_so_commands_cannot_start_new_line(self):
+        # GH Actions only parses commands at the start of a line; encoding \n/\r
+        # prevents injected commands from ever starting a new line.
+        payload = "ok\n::set-env name=x::evil\r\n"
+        result = sanitize_annotation(payload)
+        self.assertNotIn("\n", result)
+        self.assertNotIn("\r", result)
+        self.assertIn("%0A", result)
+        self.assertIn("%0D", result)
 
 
 class TestGmTurnEnvelope(unittest.TestCase):

@@ -12,7 +12,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from llm_client import chat, extract_json, log_raw  # noqa: E402
+from llm_client import chat, extract_json, log_raw, sanitize_annotation  # noqa: E402
 
 PROMPTS = Path(__file__).resolve().parent / "prompts"
 
@@ -62,7 +62,7 @@ def main() -> int:
     try:
         env = parse_recap_envelope(raw)
     except (ValueError, json.JSONDecodeError) as exc:
-        print(f"::error::recap envelope rejected: {exc}")
+        print(f"::error::recap envelope rejected: {sanitize_annotation(str(exc))}")
         log_raw("Raw model output:", raw)
         return 1
     title = (env.get("title") or "").strip() or args.milestone

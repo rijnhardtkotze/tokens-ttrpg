@@ -20,7 +20,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from gm_context import BOOT_FILES  # noqa: E402
 from gm_turn import FORBIDDEN, run_validators  # noqa: E402
-from llm_client import chat, extract_json, log_raw  # noqa: E402
+from llm_client import chat, extract_json, log_raw, sanitize_annotation  # noqa: E402
 
 PROMPTS = Path(__file__).resolve().parent / "prompts"
 MARKER_RE = re.compile(r"^(<{7}|={7}|>{7})", re.MULTILINE)
@@ -96,7 +96,7 @@ def main() -> int:
     try:
         env = parse_paradox_envelope(raw)
     except (ValueError, json.JSONDecodeError) as exc:
-        print(f"::error::paradox envelope rejected: {exc}")
+        print(f"::error::paradox envelope rejected: {sanitize_annotation(str(exc))}")
         log_raw("Raw model output:", raw)
         sh("git", "merge", "--abort", check=False)
         return 1

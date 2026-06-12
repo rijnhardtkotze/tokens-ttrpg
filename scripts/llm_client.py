@@ -51,6 +51,11 @@ def extract_json(raw: str) -> dict:
     return data
 
 
+def sanitize_annotation(value: str) -> str:
+    """Percent-encode chars that GitHub Actions would interpret as workflow commands."""
+    return value.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+
+
 def log_raw(label: str, text: str) -> None:
     """Print untrusted model output to a CI log without letting it issue
     workflow commands (::error::, ::add-mask::, ...)."""
