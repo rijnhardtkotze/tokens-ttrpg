@@ -97,7 +97,6 @@ def main() -> int:
         sh("git", "merge", "--abort", check=False)
         return 1
     missing = [rel for rel in conflicted if rel not in resolved]
-    missing = [rel for rel in conflicted if rel not in resolved]
     extra = sorted(set(resolved) - set(conflicted))
     if missing or extra:
         if missing:
