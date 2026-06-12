@@ -52,14 +52,23 @@ def gh(*args: str, check: bool = True) -> str:
 
 def parse_envelope(raw: str) -> dict:
     env = extract_json(raw)
-    if not env.get("narration") or not env.get("pr_title"):
-        raise ValueError("envelope must be an object with at least narration and pr_title")
+    if not isinstance(env.get("narration"), str) or not env["narration"].strip():
+        raise ValueError("envelope must contain a non-blank string 'narration'")
+    if not isinstance(env.get("pr_title"), str) or not env["pr_title"].strip():
+        raise ValueError("envelope must contain a non-blank string 'pr_title'")
     return env
 
 
 def check_paths(env: dict) -> None:
-    for f in env.get("files") or []:
+    files = env.get("files") or []
+    if not isinstance(files, list):
+        raise ValueError("'files' must be a list when present")
+    for f in files:
+        if not isinstance(f, dict):
+            raise ValueError("each item in 'files' must be an object")
         path = f.get("path", "")
+        if not isinstance(path, str) or not path:
+            raise ValueError("each file must have a non-empty string 'path'")
         if any(path == bad or path.startswith(bad) for bad in FORBIDDEN):
             raise ValueError(f"forbidden path in envelope: {path}")
         if not (path.startswith(ALLOWED_PREFIXES) or path in ALLOWED_FILES):
@@ -68,7 +77,12 @@ def check_paths(env: dict) -> None:
             raise ValueError(f"bad op '{f.get('op')}' for {path}")
         if not isinstance(f.get("content"), str):
             raise ValueError(f"missing content for {path}")
-    for u in env.get("index_updates") or []:
+    index_updates = env.get("index_updates") or []
+    if not isinstance(index_updates, list):
+        raise ValueError("'index_updates' must be a list when present")
+    for u in index_updates:
+        if not isinstance(u, dict):
+            raise ValueError("each item in 'index_updates' must be an object")
         if not str(u.get("index", "")).startswith("world/") or not str(u.get("index", "")).endswith("_index.md"):
             raise ValueError(f"index_updates may only touch world/**/_index.md, got {u.get('index')}")
 
@@ -246,14 +260,16 @@ def main() -> int:
         try:
             env = parse_envelope(raw)
             check_paths(env)
-            sh("git", "checkout", "--", ".")  # clean slate before (re)applying
+            sh("git", "reset", "--hard")
+            sh("git", "clean", "-fd")
             apply_envelope(root, env, turn, pr["number"], pr["title"], rolls, entropy, cost)
             failures = run_validators(root)
             if not failures:
                 break
             raise ValueError(f"the applied turn fails wiki validation:\n{failures}")
         except (ValueError, json.JSONDecodeError) as exc:
-            sh("git", "checkout", "--", ".")
+            sh("git", "reset", "--hard")
+            sh("git", "clean", "-fd")
             if attempt == 1:
                 print(f"::error::GM turn failed after repair attempt: {exc}")
                 log_raw("Raw model output:", raw)
@@ -267,7 +283,8 @@ def main() -> int:
     if args.dry_run:
         print("\n===== ENVELOPE (dry run, nothing pushed) =====")
         print(json.dumps(env, indent=2))
-        sh("git", "checkout", "--", ".")
+        sh("git", "reset", "--hard")
+        sh("git", "clean", "-fd")
         return 0
 
     branch = f"gm/turn-{turn}-pr{pr['number']}"

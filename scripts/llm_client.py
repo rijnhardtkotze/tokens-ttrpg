@@ -18,6 +18,7 @@ import re
 import sys
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 import uuid
 
@@ -72,6 +73,8 @@ def _config() -> tuple[str, str, str, str]:
     if not model or not api_key:
         raise LLMError("GM_MODEL and GM_API_KEY must be set")
     base = (os.environ.get("GM_BASE_URL") or DEFAULT_BASE[provider]).rstrip("/")
+    if urllib.parse.urlparse(base).scheme not in {"http", "https"}:
+        raise LLMError(f"GM_BASE_URL must start with http:// or https://, got '{base}'")
     return provider, model, api_key, base
 
 
@@ -109,7 +112,7 @@ def chat(system: str, messages: list[dict], max_tokens: int = 8000, timeout: int
             last_err = LLMError(f"HTTP {exc.code} from {url}: {detail}")
             if exc.code not in RETRIABLE:
                 raise last_err from exc
-        except (urllib.error.URLError, TimeoutError, json.JSONDecodeError, KeyError) as exc:
+        except (urllib.error.URLError, TimeoutError, json.JSONDecodeError, KeyError, IndexError, TypeError) as exc:
             last_err = LLMError(f"request to {url} failed: {exc}")
     raise last_err  # type: ignore[misc]
 

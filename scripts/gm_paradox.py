@@ -19,7 +19,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from gm_context import BOOT_FILES  # noqa: E402
-from gm_turn import FORBIDDEN  # noqa: E402
+from gm_turn import FORBIDDEN, run_validators  # noqa: E402
 from llm_client import chat, extract_json, log_raw  # noqa: E402
 
 PROMPTS = Path(__file__).resolve().parent / "prompts"
@@ -77,6 +77,11 @@ def main() -> int:
         sh("git", "merge", "--abort", check=False)
         print("No paradox: the timeline merges cleanly.")
         return 0
+    if merge.returncode != 0 and not conflicted:
+        sh("git", "merge", "--abort", check=False)
+        print("::error::Merge failed with non-conflict errors; cannot resolve as paradox.")
+        print(merge.stderr)
+        return 1
 
     parts = []
     for rel in BOOT_FILES:
@@ -117,6 +122,12 @@ def main() -> int:
     with (root / "meta" / "contradictions.md").open("a", encoding="utf-8") as fh:
         fh.write(f"\n## {today}: Paradox resolved (timeline merge PR #{args.pr})\n\n"
                  f"{env.get('paradox_log', '').strip()}\n")
+
+    failures = run_validators(root)
+    if failures:
+        print(f"::error::Paradox resolution fails wiki validation:\n{failures}")
+        sh("git", "merge", "--abort", check=False)
+        return 1
 
     sh("git", "add", "-A")
     sh("git", "commit", "-m", f"Resolve timeline paradox for PR #{args.pr}")

@@ -69,7 +69,7 @@ def main() -> int:
     recap_path.write_text(f"# Chapter {args.number}: {title}\n\n{recap.strip()}\n", encoding="utf-8")
 
     branch = f"gm/chapter-{args.number}-recap"
-    sh("git", "checkout", "-b", branch)
+    sh("git", "checkout", "-B", branch)
     sh("git", "add", str(recap_path))
     sh("git", "commit", "-m", f"Chapter {args.number} recap: {title}")
     sh("git", "push", "-u", "origin", branch, "--force")
