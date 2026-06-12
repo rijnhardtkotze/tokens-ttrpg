@@ -17,6 +17,7 @@ jobs:
   router:
     if: >-
       github.event_name == 'issue_comment' &&
+      contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association) &&
       (startsWith(github.event.comment.body, '/gm') ||
        startsWith(github.event.comment.body, '/lint') ||
        startsWith(github.event.comment.body, '/resolve-paradox'))
@@ -30,7 +31,7 @@ jobs:
           gh api -X POST "repos/$GITHUB_REPOSITORY/issues/comments/${{ github.event.comment.id }}/reactions" \
             -f content=eyes > /dev/null || true
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
         with:
           fetch-depth: 0
           token: ${{ secrets.GM_GITHUB_TOKEN || github.token }}
@@ -77,8 +78,14 @@ jobs:
         run: |
           git config user.name "The GM"
           git config user.email "gm-bot@users.noreply.github.com"
-          gh pr checkout "${{ github.event.issue.number }}" --repo "$GITHUB_REPOSITORY"
-          python3 scripts/gm_paradox.py --pr "${{ github.event.issue.number }}" --repo "$GITHUB_REPOSITORY"
+          PR="${{ github.event.issue.number }}"
+          # Switch to the PR branch (sets up push tracking for gm_paradox.py).
+          gh pr checkout "$PR" --repo "$GITHUB_REPOSITORY"
+          # Restore scripts/ from the trusted default branch so gm_paradox.py and
+          # all validators always run from a known-good source, even if the PR
+          # modified files under scripts/.
+          git checkout origin/main -- scripts
+          python3 scripts/gm_paradox.py --pr "$PR" --repo "$GITHUB_REPOSITORY"
 
   paradox-detect:
     if: >-
