@@ -52,9 +52,22 @@ def main() -> int:
     for i in issues:
         labels = ",".join(lab["name"] for lab in i.get("labels", []))
         parts.append(f"#{i['number']} [{i['state']}] ({labels}) {i['title']}\n{i.get('body') or ''}")
+    # Only include sessions from this chapter: skip any dated on or before the
+    # previous chapter's recap commit date so multi-chapter repos stay clean.
+    since_date: str | None = None
+    if args.number > 1:
+        prev_recap = root / "sessions" / f"chapter-{args.number - 1}-recap.md"
+        if prev_recap.exists():
+            date_str = sh("git", "log", "-1", "--format=%as", str(prev_recap), check=False).strip()
+            if re.match(r"^\d{4}-\d{2}-\d{2}$", date_str):
+                since_date = date_str
     for p in sorted((root / "sessions").glob("*.md")):
         if re.match(r"^chapter-\d+-recap\.md$", p.name):
             continue
+        if since_date:
+            date_m = re.match(r"^(\d{4}-\d{2}-\d{2})", p.name)
+            if date_m and date_m.group(1) <= since_date:
+                continue
         parts.append(f"===== {p.name} =====\n{p.read_text(encoding='utf-8')}")
 
     system = (PROMPTS / "chapter_recap_system.md").read_text(encoding="utf-8")

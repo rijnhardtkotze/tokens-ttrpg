@@ -35,13 +35,20 @@ ID_PREFIX_FOR_TYPE = {
 
 def parse_frontmatter(text: str) -> tuple[dict | None, str]:
     """Return (frontmatter dict or None, body). Raises yaml.YAMLError on bad YAML."""
-    if not (text.startswith("---\n") or text.startswith("---\r\n")):
+    if text.startswith("---\r\n"):
+        hdr = 5
+    elif text.startswith("---\n"):
+        hdr = 4
+    else:
         return None, text
-    end = text.find("\n---", 4)
-    if end == -1:
+    for nl in ("\r\n---", "\n---"):
+        end = text.find(nl, hdr)
+        if end != -1:
+            raw = text[hdr:end]
+            body = text[end + len(nl) :].lstrip("\r\n")
+            break
+    else:
         return None, text
-    raw = text[4:end]
-    body = text[end + 4 :].lstrip("\n")
     data = yaml.safe_load(raw)
     if not isinstance(data, dict):
         return None, text

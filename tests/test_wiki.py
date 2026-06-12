@@ -23,6 +23,13 @@ class TestWiki(unittest.TestCase):
     def test_no_frontmatter(self):
         self.assertEqual(parse_frontmatter("# Heading\n"), (None, "# Heading\n"))
 
+    def test_frontmatter_crlf(self):
+        crlf = "---\r\nid: npc-test\r\ntags: [a]\r\n---\r\n\r\nbody text\r\n"
+        fm, body = parse_frontmatter(crlf)
+        self.assertIsNotNone(fm)
+        self.assertEqual(fm["id"], "npc-test")
+        self.assertEqual(body.strip(), "body text")
+
     def test_extract_links_skips_code(self):
         text = "See [[npc-harald|Harald]] and [[loc-oakford]].\n```\n[[not-a-link]]\n```\n`[[also-not]]`"
         self.assertEqual(extract_links(text), ["npc-harald", "loc-oakford"])
