@@ -60,7 +60,8 @@ def main() -> int:
         env = parse_recap_envelope(raw)
     except (ValueError, json.JSONDecodeError) as exc:
         print(f"::error::recap envelope rejected: {exc}")
-        print(f"Raw model output:\n{raw}")
+        safe_raw = "\n".join(f" {ln}" for ln in raw.splitlines())
+        print(f"Raw model output (sanitized):\n{safe_raw}")
         return 1
     title = (env.get("title") or "").strip() or args.milestone
     recap = env["recap"]

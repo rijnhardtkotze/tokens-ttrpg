@@ -84,7 +84,8 @@ def main() -> int:
         env = parse_paradox_envelope(raw)
     except (ValueError, json.JSONDecodeError) as exc:
         print(f"::error::paradox envelope rejected: {exc}")
-        print(f"Raw model output:\n{raw}")
+        safe_raw = "\n".join(f" {ln}" for ln in raw.splitlines())
+        print(f"Raw model output (sanitized):\n{safe_raw}")
         sh("git", "merge", "--abort", check=False)
         return 1
 
