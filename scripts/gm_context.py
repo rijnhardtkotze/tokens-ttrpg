@@ -10,6 +10,7 @@ Tier-2 dropped first, boot files never.
 
 from __future__ import annotations
 
+import re
 import sys
 from pathlib import Path
 
@@ -68,11 +69,18 @@ def assemble(root: Path, pr_title: str, pr_body: str, pr_diff: str,
         turn += _section("FATE — RESOLVED ROLLS (already final, narrate around these)", rolled)
     turn += _section("WEAVE COST (already deducted by the driver)", cost_report)
 
-    # Entity resolution
+    # Entity resolution: [[ids]] in the PR body/diff and directly-touched articles.
     mentioned: list[str] = []
     for target in extract_links(pr_body or "") + extract_links(pr_diff or ""):
         if target in id_map and target not in mentioned:
             mentioned.append(target)
+    # Seed Tier-3 from markdown files changed in the diff (may have no [[links]])
+    _diff_path_re = re.compile(r"^diff --git a/.+ b/(.+\.md)$", re.MULTILINE)
+    path_to_id = {v: k for k, v in id_map.items()}
+    for touched_path in _diff_path_re.findall(pr_diff or ""):
+        touched_id = path_to_id.get(touched_path)
+        if touched_id and touched_id not in mentioned:
+            mentioned.append(touched_id)
 
     tier3, tier1_dirs, related_ids = [], [], []
     for aid in mentioned:
