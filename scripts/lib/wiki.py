@@ -99,10 +99,18 @@ def quick_reference(body: str) -> str | None:
     return m.group(1).strip() if m else None
 
 
+def _escape_command_data(value: str) -> str:
+    return value.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+
+
+def _escape_command_prop(value: str) -> str:
+    return _escape_command_data(value).replace(":", "%3A").replace(",", "%2C")
+
+
 def error(path: str, msg: str) -> str:
     """A GitHub Actions error annotation line."""
-    return f"::error file={path}::{msg}"
+    return f"::error file={_escape_command_prop(path)}::{_escape_command_data(msg)}"
 
 
 def warning(path: str, msg: str) -> str:
-    return f"::warning file={path}::{msg}"
+    return f"::warning file={_escape_command_prop(path)}::{_escape_command_data(msg)}"
