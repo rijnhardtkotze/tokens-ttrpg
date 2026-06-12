@@ -20,5 +20,8 @@ OUTPUT CONTRACT — reply with EXACTLY ONE JSON object:
   "comment": "<short in-fiction narration of the paradox resolving, posted to the PR>"
 }
 
-Every conflicted file must appear in `resolutions` with full, valid,
-schema-conforming content and zero conflict markers.
+Every conflicted file must appear in `resolutions` exactly once, with full,
+valid, schema-conforming content and zero conflict markers. Never touch
+driver-owned paths (`meta/canon.md`, `meta/rolls.md`, `.github/`, `scripts/`,
+`tests/`). `paradox_log` and `comment` are optional — omit them rather than
+sending non-string values — but include both whenever you can.

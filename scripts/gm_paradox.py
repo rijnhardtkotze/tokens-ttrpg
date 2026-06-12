@@ -19,7 +19,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from gm_context import BOOT_FILES  # noqa: E402
-from llm_client import chat, extract_json  # noqa: E402
+from gm_turn import FORBIDDEN  # noqa: E402
+from llm_client import chat, extract_json, log_raw  # noqa: E402
 
 PROMPTS = Path(__file__).resolve().parent / "prompts"
 MARKER_RE = re.compile(r"^(<{7}|={7}|>{7})", re.MULTILINE)
@@ -32,19 +33,26 @@ def sh(*args: str, check: bool = True) -> subprocess.CompletedProcess:
 def parse_paradox_envelope(raw: str) -> dict:
     """Validate the /resolve-paradox contract (prompts/gm_paradox_system.md).
 
-    Required: a non-empty `resolutions` list of {path, content} string pairs.
-    Optional: `paradox_log` and `comment`, strings when present. This contract
-    is distinct from gm_turn's narration/pr_title envelope.
+    Required: a non-empty `resolutions` list of {path, content} string pairs,
+    one per path, none touching a driver-owned (forbidden) path. Optional:
+    `paradox_log` and `comment`, strings when present. This contract is
+    distinct from gm_turn's narration/pr_title envelope.
     """
     env = extract_json(raw)
     resolutions = env.get("resolutions")
     if not isinstance(resolutions, list) or not resolutions:
         raise ValueError("envelope must contain a non-empty 'resolutions' list")
+    seen = set()
     for r in resolutions:
         if (not isinstance(r, dict) or not isinstance(r.get("path"), str)
                 or not r["path"] or not isinstance(r.get("content"), str)):
             raise ValueError("every resolution must be an object with a non-empty "
                              "string 'path' and a string 'content'")
+        if r["path"] in seen:
+            raise ValueError(f"duplicate resolution for path: {r['path']}")
+        seen.add(r["path"])
+        if any(r["path"] == bad or r["path"].startswith(bad) for bad in FORBIDDEN):
+            raise ValueError(f"forbidden path in resolutions: {r['path']}")
     for key in ("paradox_log", "comment"):
         if key in env and not isinstance(env[key], str):
             raise ValueError(f"'{key}' must be a string when present")
@@ -84,7 +92,7 @@ def main() -> int:
         env = parse_paradox_envelope(raw)
     except (ValueError, json.JSONDecodeError) as exc:
         print(f"::error::paradox envelope rejected: {exc}")
-        print(f"Raw model output:\n{raw}")
+        log_raw("Raw model output:", raw)
         sh("git", "merge", "--abort", check=False)
         return 1
 
