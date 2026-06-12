@@ -48,7 +48,7 @@ def main() -> int:
             continue
         articles.append((rel, fm or {}, body))
 
-    incoming: set[str] = set()
+    incoming: set[tuple[str, str]] = set()
     scan_dirs = ["world", "plot", "character", "sessions", "meta"]
     for d in scan_dirs:
         if not (root / d).is_dir():

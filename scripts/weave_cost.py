@@ -93,7 +93,11 @@ def main() -> int:
     ap.add_argument("--format", choices=["json", "markdown"], default="json")
     args = ap.parse_args()
 
-    rows = diff_costs(args.base, args.head, args.repo)
+    try:
+        rows = diff_costs(args.base, args.head, args.repo)
+    except (subprocess.CalledProcessError, FileNotFoundError) as exc:
+        print(f"::error::weave_cost: git failed: {exc}", file=sys.stderr)
+        return 1
     total = total_cost(rows)
     if args.format == "markdown":
         print(markdown_report(rows, total, args.budget))

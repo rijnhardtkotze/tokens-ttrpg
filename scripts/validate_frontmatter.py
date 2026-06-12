@@ -56,7 +56,8 @@ def check_article(rel: str, path: Path, problems: list[str]) -> None:
         problems.append(error(rel, "tags must be a list"))
     if not isinstance(fm.get("related"), list):
         problems.append(error(rel, "related must be a list"))
-    if not (isinstance(fm.get("summary"), str) and fm["summary"].strip()):
+    if not (isinstance(fm.get("summary"), str) and fm["summary"].strip()
+            and "\n" not in fm["summary"] and "\r" not in fm["summary"]):
         problems.append(error(rel, "summary must be a non-empty one-liner"))
 
     if isinstance(aid, str):

@@ -45,7 +45,7 @@ class TestValidatorsOnFixtures(unittest.TestCase):
     def test_clean_repo_passes(self):
         for script in ("validate_frontmatter.py", "check_links.py", "check_indexes.py"):
             proc = self.run_validator(script, ROOT)
-            self.assertEqual(proc.returncode, 0, f"{script} failed on clean repo:\n{proc.stdout}")
+            self.assertEqual(proc.returncode, 0, f"{script} failed on clean repo:\n{proc.stdout}{proc.stderr}")
 
     def test_broken_fixture_fails(self):
         broken = FIXTURES / "broken-wiki"

@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -16,8 +17,8 @@ from llm_client import chat, extract_json, log_raw  # noqa: E402
 PROMPTS = Path(__file__).resolve().parent / "prompts"
 
 
-def sh(*args: str) -> str:
-    return subprocess.run(args, check=True, capture_output=True, text=True).stdout
+def sh(*args: str, check: bool = True) -> str:
+    return subprocess.run(args, check=check, capture_output=True, text=True).stdout
 
 
 def parse_recap_envelope(raw: str) -> dict:
@@ -52,6 +53,8 @@ def main() -> int:
         labels = ",".join(lab["name"] for lab in i.get("labels", []))
         parts.append(f"#{i['number']} [{i['state']}] ({labels}) {i['title']}\n{i.get('body') or ''}")
     for p in sorted((root / "sessions").glob("*.md")):
+        if re.match(r"^chapter-\d+-recap\.md$", p.name):
+            continue
         parts.append(f"===== {p.name} =====\n{p.read_text(encoding='utf-8')}")
 
     system = (PROMPTS / "chapter_recap_system.md").read_text(encoding="utf-8")
@@ -71,13 +74,20 @@ def main() -> int:
     branch = f"gm/chapter-{args.number}-recap"
     sh("git", "checkout", "-B", branch)
     sh("git", "add", str(recap_path))
-    sh("git", "commit", "-m", f"Chapter {args.number} recap: {title}")
+    sh("git", "commit", "--allow-empty", "-m", f"Chapter {args.number} recap: {title}")
     sh("git", "push", "-u", "origin", branch, "--force")
-    sh("gh", "pr", "create", "--repo", args.repo, "--base", "main", "--head", branch,
-       "--title", f"Chapter {args.number} closes: {title}", "--body", recap, "--label", "gm-turn")
 
-    sh("gh", "release", "create", f"chapter-{args.number}", "--repo", args.repo,
-       "--title", f"Chapter {args.number}: {title}", "--notes", recap)
+    existing_pr = sh("gh", "pr", "list", "--repo", args.repo, "--head", branch,
+                     "--state", "open", "--json", "number", check=False).strip()
+    if not (existing_pr and existing_pr != "[]"):
+        sh("gh", "pr", "create", "--repo", args.repo, "--base", "main", "--head", branch,
+           "--title", f"Chapter {args.number} closes: {title}", "--body", recap, "--label", "gm-turn")
+
+    existing_release = sh("gh", "release", "view", f"chapter-{args.number}",
+                          "--repo", args.repo, check=False).strip()
+    if not existing_release:
+        sh("gh", "release", "create", f"chapter-{args.number}", "--repo", args.repo,
+           "--title", f"Chapter {args.number}: {title}", "--notes", recap)
     return 0
 
 

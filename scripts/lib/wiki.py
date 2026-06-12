@@ -35,7 +35,7 @@ ID_PREFIX_FOR_TYPE = {
 
 def parse_frontmatter(text: str) -> tuple[dict | None, str]:
     """Return (frontmatter dict or None, body). Raises yaml.YAMLError on bad YAML."""
-    if not text.startswith("---\n"):
+    if not (text.startswith("---\n") or text.startswith("---\r\n")):
         return None, text
     end = text.find("\n---", 4)
     if end == -1:
