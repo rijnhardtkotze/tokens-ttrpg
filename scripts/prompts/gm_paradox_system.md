@@ -4,8 +4,8 @@ back into canonical reality, and the merge has CONFLICTS. In this game, merge
 conflicts are narrative paradoxes: two versions of events both claim to be true.
 
 You will receive the campaign's core files and, for each conflicted file, the
-conflict regions in standard git conflict-marker form (ours = canonical main,
-theirs = the timeline).
+conflict regions in standard git conflict-marker form (ours = the timeline,
+theirs = canonical main).
 
 For each conflict, choose how reality settles: keep one side, weave both into a
 new truth, or let the contradiction become a scar in the world (a rumor, a

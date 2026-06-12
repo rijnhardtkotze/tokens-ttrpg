@@ -19,9 +19,9 @@ class TestExtractJson(unittest.TestCase):
         self.assertEqual(extract_json(f"```json\n{json.dumps(obj)}\n```"), obj)
         self.assertEqual(extract_json(f"noise before\n{json.dumps(obj)}\nafter"), obj)
 
-    def test_paradox_and_recap_shapes_parse(self):
-        # Regression: these contracts have no narration/pr_title and must NOT go
-        # through gm-turn envelope validation — each has its own parse function.
+    def test_paradox_shape_passes_raw_extract(self):
+        # Regression: the paradox contract has no narration/pr_title and must NOT
+        # go through gm-turn envelope validation — it has its own parse function.
         paradox = {"resolutions": [{"path": "world/npcs/x.md", "content": "..."}],
                    "paradox_log": "log", "comment": "c"}
         self.assertEqual(extract_json(json.dumps(paradox)), paradox)
