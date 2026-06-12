@@ -18,3 +18,8 @@
 # Lint reports — generated, optional to commit
 # Uncomment if you'd rather not track them:
 # meta/lint-report-*.md
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/

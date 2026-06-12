@@ -46,3 +46,22 @@ Grouping by region or theme is allowed.
 
 `sessions/YYYY-MM-DD-NN.md` — `NN` = sequence number per day (`01`, `02`, …).
 Minimal frontmatter: `date`, `duration_minutes` (optional), `summary`.
+
+## Git mode conventions
+
+See `meta/git-protocol.md` for the rules these names serve.
+
+**Branches:**
+
+- `action/<slug>` — a player action PR branch
+- `gm/turn-<N>-pr<num>` — a GM turn PR branch (created by the GM workflow)
+- `timeline/<slug>` — an alternate timeline being played
+- `archive/timeline/<slug>` — a **tag** preserving an abandoned timeline
+- `demo-campaign` — the ready-to-play example setting
+
+**Labels:** `player-action`, `gm-turn`, `session-zero`, `timeline-merge`, `paradox`,
+`quest:active`, `quest:resolved`, `quest:failed`, `seed`.
+
+**Rolls block** (in action PR bodies): a fenced ` ```rolls ` block, one roll per line —
+`<action-id>: NdS[+M|-M]  # optional purpose`, with `action-id` matching
+`[a-z0-9-]{1,40}` and unique within the PR.

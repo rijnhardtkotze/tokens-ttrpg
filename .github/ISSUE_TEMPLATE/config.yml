@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: How this game is played through Git
+    url: https://github.com/rijnhardtkotze/tokens-ttrpg/blob/main/meta/git-protocol.md
+    about: The rulebook — turn loop, dice, Weave costs, timelines, quests, paradoxes.

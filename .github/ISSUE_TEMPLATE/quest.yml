@@ -1,0 +1,24 @@
+name: Quest
+description: A new entry in the quest log. Usually opened by the GM during its turns.
+title: "Quest: "
+labels: ["quest:active"]
+body:
+  - type: textarea
+    id: hook
+    attributes:
+      label: The hook
+      description: How this quest entered the fiction — who asked, what was found, what threatens.
+    validations:
+      required: true
+  - type: textarea
+    id: objective
+    attributes:
+      label: Objective
+      description: What "done" looks like. Closing this issue with quest:resolved or quest:failed is the completion.
+    validations:
+      required: true
+  - type: input
+    id: articles
+    attributes:
+      label: Related articles
+      description: "Wiki ids involved, e.g. npc-harald-innkeeper, loc-oakford"

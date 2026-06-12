@@ -111,3 +111,7 @@ Procedure: GM finishes describing the scene, summarizes briefly, asks: *"Shall w
 ## Rule system
 
 Currently free-form narrative without dice. If the player wants to introduce dice mechanics, record them in `meta/canon.md` and extend `character/sheet.md` accordingly.
+
+## Git mode
+
+When this campaign is played through Git and GitHub Actions (see `meta/git-protocol.md`), dice, Weave costs, turn order, timelines, quests, and chapters are governed by that protocol. Player actions arrive as merged Pull Requests; your narration and canonization are applied by a driver script and returned as a Pull Request. The canonization protocol, lazy loading, frontmatter schema, and tone rules in this file remain in force unchanged. In Git mode you must never edit `meta/canon.md`, `meta/rolls.md`, the `weave:` fields of the character sheet, `.github/`, or `scripts/` — propose canon changes as `meta/contradictions.md` entries instead, and leave all arithmetic to the driver.

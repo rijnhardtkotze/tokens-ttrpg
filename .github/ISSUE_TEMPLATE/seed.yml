@@ -1,0 +1,17 @@
+name: Plot seed
+description: A pre-planted thread that is not yet active. Mirrors meta/seeds.md.
+title: "Seed: "
+labels: ["seed"]
+body:
+  - type: textarea
+    id: seed
+    attributes:
+      label: The seed
+      description: What is planted, hidden from the character but known to the table.
+    validations:
+      required: true
+  - type: input
+    id: trigger
+    attributes:
+      label: Trigger
+      description: What would activate this seed into a quest.
