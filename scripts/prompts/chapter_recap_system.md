@@ -12,3 +12,6 @@ OUTPUT CONTRACT — reply with EXACTLY ONE JSON object:
   "title": "<chapter title, a few words>",
   "recap": "<the recap, markdown>"
 }
+
+`recap` is required. `title` is optional — if you omit it, the milestone
+title is used instead.
