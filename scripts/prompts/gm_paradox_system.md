@@ -20,5 +20,7 @@ OUTPUT CONTRACT — reply with EXACTLY ONE JSON object:
   "comment": "<short in-fiction narration of the paradox resolving, posted to the PR>"
 }
 
-Every conflicted file must appear in `resolutions` with full, valid,
-schema-conforming content and zero conflict markers.
+Every conflicted file must appear exactly once in `resolutions` with full,
+valid, schema-conforming content and zero conflict markers. `paradox_log` and
+`comment` are optional — omit either if you have nothing to add, though a
+good paradox usually deserves both.

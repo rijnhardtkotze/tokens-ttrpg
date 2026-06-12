@@ -4,6 +4,8 @@ import unittest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
+from chapter_recap import parse_recap_envelope  # noqa: E402
+from gm_paradox import parse_paradox_envelope  # noqa: E402
 from gm_turn import check_paths, parse_envelope  # noqa: E402
 from llm_client import extract_json  # noqa: E402
 
@@ -49,6 +51,82 @@ class TestGmTurnEnvelope(unittest.TestCase):
                           "scripts/dice.py", "secrets.txt"):
             with self.assertRaises(ValueError, msg=forbidden):
                 check_paths(env_for(forbidden))
+
+
+class TestParadoxEnvelope(unittest.TestCase):
+    """parse_paradox_envelope enforces the gm_paradox_system.md contract."""
+
+    def _valid(self) -> dict:
+        return {"resolutions": [{"path": "world/npcs/x.md", "content": "settled"}],
+                "paradox_log": "what collided and how reality settled",
+                "comment": "the dust clears"}
+
+    def test_accepts_the_prompt_contract(self):
+        env = parse_paradox_envelope(json.dumps(self._valid()))
+        self.assertEqual(env["resolutions"][0]["path"], "world/npcs/x.md")
+
+    def test_log_and_comment_are_optional(self):
+        env = parse_paradox_envelope(json.dumps({"resolutions": self._valid()["resolutions"]}))
+        self.assertNotIn("comment", env)
+
+    def test_rejects_gm_turn_shape(self):
+        # The original bug, inverted: a gm-turn envelope is not a paradox reply.
+        with self.assertRaises(ValueError):
+            parse_paradox_envelope(json.dumps({"narration": "x", "pr_title": "t"}))
+
+    def test_rejects_malformed_resolutions(self):
+        for payload in ({},
+                        {"resolutions": "not a list"},
+                        {"resolutions": []},
+                        {"resolutions": ["not a dict"]},
+                        {"resolutions": [{"content": "no path"}]},
+                        {"resolutions": [{"path": "no-content.md"}]},
+                        {"resolutions": [{"path": "", "content": "empty path"}]},
+                        {"resolutions": [{"path": 3, "content": "bad path"}]},
+                        {"resolutions": [{"path": "x.md", "content": 3}]}):
+            with self.assertRaises(ValueError, msg=repr(payload)):
+                parse_paradox_envelope(json.dumps(payload))
+
+    def test_rejects_duplicate_resolution_paths(self):
+        # Fail fast instead of letting last-one-wins hide an ambiguous set.
+        payload = {"resolutions": [{"path": "world/npcs/x.md", "content": "a"},
+                                   {"path": "world/npcs/x.md", "content": "b"}]}
+        with self.assertRaisesRegex(ValueError, "duplicate"):
+            parse_paradox_envelope(json.dumps(payload))
+
+    def test_rejects_non_string_log_and_comment(self):
+        for key in ("paradox_log", "comment"):
+            payload = self._valid()
+            payload[key] = ["not", "a", "string"]
+            with self.assertRaises(ValueError, msg=key):
+                parse_paradox_envelope(json.dumps(payload))
+
+
+class TestRecapEnvelope(unittest.TestCase):
+    """parse_recap_envelope enforces the chapter_recap_system.md contract."""
+
+    def test_accepts_the_prompt_contract(self):
+        env = parse_recap_envelope(json.dumps({"title": "The Salt Bell", "recap": "It began."}))
+        self.assertEqual(env["title"], "The Salt Bell")
+        self.assertEqual(env["recap"], "It began.")
+
+    def test_title_is_optional(self):
+        env = parse_recap_envelope(json.dumps({"recap": "It began."}))
+        self.assertEqual(env["recap"], "It began.")
+
+    def test_rejects_gm_turn_shape(self):
+        # The original bug, inverted: a gm-turn envelope is not a recap reply.
+        with self.assertRaises(ValueError):
+            parse_recap_envelope(json.dumps({"narration": "x", "pr_title": "t"}))
+
+    def test_rejects_missing_blank_or_non_string_recap(self):
+        for payload in ({}, {"title": "t"}, {"recap": ""}, {"recap": "  \n "}, {"recap": ["x"]}):
+            with self.assertRaises(ValueError, msg=repr(payload)):
+                parse_recap_envelope(json.dumps(payload))
+
+    def test_rejects_non_string_title(self):
+        with self.assertRaises(ValueError):
+            parse_recap_envelope(json.dumps({"title": 7, "recap": "fine"}))
 
 
 if __name__ == "__main__":
